@@ -1,0 +1,6 @@
+Package: xbox-360-media-center
+Version: 1.0
+Maintainer: Alex Free
+Architecture: amd64
+Homepage: https://github.com/alex-free/xbox-360-media-center
+Description: Local file conversion + YouTube downloader specialized in creating media files compatible with the native Xbox 360 video player, with 1080p support.

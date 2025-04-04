@@ -1,0 +1,147 @@
+#!/bin/bash
+
+version=1.0
+
+# Specifies if we use self contained bin dir. Set by build script during each release. Also tells us if we need root to update yt-dlp.
+portable_release=false
+
+# 2017 YTS Encoding Settings: https://gist.github.com/kuntau/a7cbe28df82380fd3467
+# HandBrakeCLI -i /file/input.mp4 -o /file/out.mp4 -E fdk_faac -B 96k -6 stereo -R 44.1 -e x264 -q 27 -x cabac=1:ref=5:analyse=0x133:me=umh:subme=9:chroma-me=1:deadzone-inter=21:deadzone-intra=11:b-adapt=2:rc-lookahead=60:vbv-maxrate=10000:vbv-bufsize=10000:qpmax=69:bframes=5:b-adapt=2:direct=auto:crf-max=51:weightp=2:merange=24:chroma-qp-offset=-1:sync-lookahead=2:psy-rd=1.00,0.15:trellis=2:min-keyint=23:partitions=all
+
+# Note: YTS now offers x264 or x265 with 5.1 AAC which is not compatible with the Xbox 360. Older YTS releases are great tho.
+
+# Official Video Playback Specs for Xbox 360: https://web.archive.org/web/20221119023720/https://learn.microsoft.com/en-us/archive/blogs/xboxteam/december-2007-video-playback-faq
+
+# Xbox 360 supports the following for H.264:
+# * File Extensions: .mp4, .m4v, mp4v, .mov
+# * Containers: MPEG-4, QuickTime
+# * Video Profiles: Baseline, main, and high (up to Level 4.1) profiles.
+# * Video Bitrate: 10 Mbps with resolutions of 1920 x 1080 at 30fps. See question number 11 for more information.
+# * Audio Profiles: 2 channel AAC low complexity (LC)
+# * Audio Max Bitrate: No restrictions. See question number 11 for more information.
+
+# Modifications to 2017 YTS Encoding Settings:
+# * 128K audio bitrate instead of 96K
+# * Max video bitrate at 9872k to account for maximum total bitrate of 10000k.
+# * H.264 profile set to level 4.1.
+
+echo -e "Xbox 360 Media Center v"$version"\n(C) 2025, Alex Free (3-BSD)\nhttps://github.com/alex-free/xbox-360-media-center\n"
+
+if [ "$portable_release" == "true" ]; then
+        # Put HandBrakeCLI, yt-dlp, and ffmpeg in $PATH if they are in the same directory as this script.
+        export PATH="$(dirname "$0")"/bin${PATH:+:${PATH}}
+else
+    # Put yt-dlp in $PATH.
+    export PATH=/usr/share/x360mc${PATH:+:${PATH}}
+    if ! command -v HandBrakeCLI &> /dev/null || ! command -v ffmpeg &> /dev/null ; then
+    echo "Info: root privileges are required to install dependencies."
+        
+        if [ "$(shell uname)" = "Linux" ]; then
+            echo "Linux detected."
+        
+            if command -v dnf > /dev/null; then
+                echo "Using dnf"
+                sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+	            sudo dnf -y swap ffmpeg-free ffmpeg --allowerasing
+                sudo dnf -y install handbrake
+            elif command -v apt > /dev/null; then
+                echo "Using apt"
+                sudo apt install --yes handbrake-cli ffmpeg 
+            else
+                echo "Both the DNF and APT package managers were not found. The make deps rule requires one of these package managers to automatically install all required build dependencies."
+            fi
+        fi
+    fi
+fi
+
+echo "Found the following executables:"
+which yt-dlp
+which ffmpeg
+which HandBrakeCLI
+
+if ! [[ $# -eq 1 && "$1" == "-yu" ]] && ! [[ $# -eq 2 && ("$1" == "-c" || "$1" == "-yl" || "$1" == "-yh" ) ]]; then
+
+    echo "Error: incorrect number of arguments. 1 or 2 arguments are required.
+Usage:
+
+x360mc -c <input media file>     Convert media file to an Xbox 360 compatible H.264 MP4 (up to 1080p).
+
+x360mc -c <input folder of media files>      Recursively convert a folder of Recursively convert a folder of .mkv or .mp4 files to Xbox 360 compatible H.264 MP4s (up to 1080p).
+
+x360mc -yl <YouTube URL>     Download YouTube video as an Xbox 360 compatible H.264 MP4 using the lower bitrate set and highest resolution availble up to 1080p (must have double quotes around URL).
+
+x360mc -yh <YouTube URL>     Download YouTube video as an Xbox 360 compatible H.264 MP4 using the highest bitrate set and highest resolution available up to 1080p (must have double quotes around URL).
+
+x360mc -yu       Update YouTube-DLP.
+"
+    exit 1
+fi
+
+if [ "$1" == "-c" ]; then
+    if [ -f "${2}" ]; then
+        media_file="${2%.*}"-x360mc.mp4
+
+        HandBrakeCLI -i "${2}" -o "${media_file}" -E aac -B 128k -6 stereo -R 44.1 -e x264 -q 27 -x level=4.1:cabac=1:ref=5:analyse=0x133:me=umh:subme=9:chroma-me=1:deadzone-inter=21:deadzone-intra=11:b-adapt=2:rc-lookahead=60:vbv-maxrate=9872:vbv-bufsize=9872:qpmax=69:bframes=5:b-adapt=2:direct=auto:crf-max=51:weightp=2:merange=24:chroma-qp-offset=-1:sync-lookahead=2:psy-rd=1.00,0.15:trellis=2:min-keyint=23:partitions=all
+    elif [ -d "${2}" ]; then
+        cd "${2}"
+        parent=$(basename "${2}")-x360mc
+        rm -rf "${parent}"
+        mkdir "${parent}"
+        
+    # Find all *.mp4 *.mkv files recursively in the current directory
+        for f in *; do
+            if [[ "${f}" == *.mkv || "${f}" == *.mp4 ]]; then
+                # Set the output path
+                media_file=$(basename "${f%.*}")
+
+                HandBrakeCLI -i "${f}" -o "${parent}"/"${media_file}".mp4 -E aac -B 128k -6 stereo -R 44.1 -e x264 -q 27 -x level=4.1:cabac=1:ref=5:analyse=0x133:me=umh:subme=9:chroma-me=1:deadzone-inter=21:deadzone-intra=11:b-adapt=2:rc-lookahead=60:vbv-maxrate=9872:vbv-bufsize=9872:qpmax=69:bframes=5:b-adapt=2:direct=auto:crf-max=51:weightp=2:merange=24:chroma-qp-offset=-1:sync-lookahead=2:psy-rd=1.00,0.15:trellis=2:min-keyint=23:partitions=all
+            fi
+        done
+    fi
+elif [ "$1" == "-yh" ]; then
+    # Find lines containing 'avc1' and sort them by format number in reverse order. If this format set exists we will never get to the lower bitrate format set. If it doesn't we will skip format 160 (144p lower bitrate) and drop into 133-137 range. Full highest bitrate set for H.264 (AVC1) video is:
+    # * 394 (144p).
+    # * 395 (240p).
+    # * 396 (360p).
+    # * 397 (480p).
+    # * 398 (720p).
+    # * 399 (1080p).
+    formats="$(yt-dlp -F "${2}")"
+    highest_supported_format="$(echo "$formats" | grep 'avc1' | awk '$1 != 160' | sort -t ' ' -k1,1nr | head -n 1 | awk '{print $1}')"
+    
+    if [ -z "$highest_supported_format" ]; then
+        echo "Error, unable to get any video format. Try updating yt-dlp with the command x360mc -u."
+        exit 1
+    fi
+    
+    echo "Got format "$highest_supported_format""
+    yt-dlp -f "$highest_supported_format"+234 "${2}"
+elif [ "$1" == "-yl" ]; then
+    # Find lines containing 'avc1' and sort them by format number in reverse order. Ignores everything after 137 (higher quality set of AVC1). Ignores format 160 (144p) because 240p is always available and that seems like a pain in the ass to implement. Full lower bitrate set for H.264 (AVC1) video is:
+    # * 160 (144p) (ignored, never downloaded see above).
+    # * 133 (240p).
+    # * 134 (360p).
+    # * 135 (480p).
+    # * 136 (720p).
+    # * 137 (1080p).
+    formats="$(yt-dlp -F "${2}")"
+    highest_supported_format="$(echo "$formats" | grep 'avc1' | awk '$1 <= 137' | sort -t ' ' -k1,1nr | head -n 1 | awk '{print $1}')"
+    
+    if [ -z "$highest_supported_format" ]; then
+        echo "Error, unable to get any video format. Try updating yt-dlp with the command x360mc -u."
+        exit 1
+    fi
+    
+    echo "Got format "$highest_supported_format""
+    yt-dlp -f "$highest_supported_format"+234 "${2}"
+elif [ "$1" == "-yu" ]; then
+    if [ "$portable_release" == "true" ]; then
+        yt-dlp -U
+    else
+        # Stupid EUID check prevents us from updating.
+        echo "Info: root privilages are required to update yt-dlp for Linux package releases of Xbox 360 Media Center."
+        cp /usr/share/x360mc/yt-dlp /tmp/yt-dlp
+        /tmp/yt-dlp -U
+        sudo mv /tmp/yt-dlp /usr/share/x360mc/yt-dlp
+    fi
+fi

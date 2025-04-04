@@ -1,0 +1,150 @@
+#!/bin/bash
+
+# EzRe build script for Xbox 360 Media Center.
+version="1.0"
+program="x360mc"
+release_name="xbox-360-media-center-v$version"
+release_files="x360mc *.md"
+
+# Mac OS doesn't allow update_handbrake=true.
+mac=false
+
+handbrake_cli_mac=handbrake-cli-v1.9.2-mac-os-x86_64.zip
+
+if ! command -v dpkg > /dev/null || ! command -v rpm > /dev/null || ! command -v 7z > /dev/null || ! command -v zip > /dev/null || ! command -v curl > /dev/null || ! command -v HandBrakeCLI > /dev/null; then
+    echo "Info: root privileges are required to install build dependencies."
+
+	if [ "$(uname)" = "Darwin" ]; then
+		echo "Mac OS detected."
+        mac=true
+
+		if command -v port > /dev/null; then
+			echo "Using MacPorts"
+			sudo port -N install rpm dpkg curl p7zip zip
+		else
+			echo "MacPorts is not installed"
+		fi
+	
+    elif [ "$(shell uname)" = "Linux" ]; then
+		echo "Linux detected."
+	
+    	if command -v dnf > /dev/null; then
+			echo "Using dnf"
+            sudo dnf -y install dpkg-dev rpmdevtools handbrake curl p7zip zip
+		elif command -v apt > /dev/null; then
+			echo "Using apt"
+			sudo apt install --yes dpkg-dev rpm handbrake-cli curl p7zip zip
+		else
+			echo "MacPorts, DNF, and APT package managers were not found. The make deps rule requires one of these package managers to automatically install all required build dependencies."
+		fi
+    fi
+fi
+
+cd "$(dirname "$0")"
+
+version=$version
+rm -rf "$release_name"-mac-os-x86_64-portable "$release_name"-mac-os-x86_64-portable.zip rm -rf "$release_name"-linux-x86_64-portable.zip rm -rf "$release_name"-linux-x86_64-portable "$release_name".deb *.rpm
+
+if [ "$1" == "clean" ]; then
+    exit 0
+fi
+
+if sed --version >/dev/null 2>&1; then
+    echo "Info: using GNU sed"
+    bsd_sed=false
+else
+    echo "Info: using BSD sed"
+    bsd_sed=true
+fi
+
+if [ "$bsd_sed" == "true" ]; then
+    sed -i '' -E "s|^version=.*|version=$version|" x360mc
+    sed -i '' -E "s|^Version:.*|Version: $version|" control
+    sed -i '' -E "s|^Version:.*|Version: v$version|" ezre.spec
+else
+    sed -i'' -E "s|^version=.*|version=$version|" x360mc  
+    sed -i'' -E "s|^Version:.*|Version: $version|" control
+    sed -i'' -E "s|^Version:.*|Version: v$version|" ezre.spec
+fi
+
+# Mac OS Portable release.
+mkdir -p "$release_name"-mac-os-x86_64-portable/bin
+cp -r ${release_files} "$release_name"-mac-os-x86_64-portable
+
+if [ "$bsd_sed" == "true" ]; then
+    sed -i '' -E "s|^portable_release=.*|portable_release=true|" "$release_name"-mac-os-x86_64-portable/x360mc
+else
+    sed -i'' -E "s|^portable_release=.*|portable_release=true|" "$release_name"-mac-os-x86_64-portable/x360mc
+fi
+
+unzip "$handbrake_cli_mac" -d "$release_name"-mac-os-x86_64-portable/bin
+
+echo "Downloading the latest ffmpeg for Mac OS X 10.9+..."
+rm -f ffmpeg.zip
+curl -L "https://evermeet.cx/ffmpeg/getrelease/zip" -o ffmpeg.zip
+unzip ffmpeg.zip -d "$release_name"-mac-os-x86_64-portable/bin
+rm ffmpeg.zip
+
+rm -f yt-dlp_macos_legacy
+echo "Downloading the latest yt-dlp for Mac OS X 10.9+..."
+curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy" -o "$release_name"-mac-os-x86_64-portable/bin/yt-dlp
+
+unzip Optional-Media-Update-12-12-2011.zip -d "$release_name"-mac-os-x86_64-portable
+
+chmod -R 777 "$release_name"-mac-os-x86_64-portable
+zip -r  "$release_name"-mac-os-x86_64-portable.zip "$release_name"-mac-os-x86_64-portable
+
+# Linux portable release.
+
+mkdir -p "$release_name"-linux-x86_64-portable/bin
+cp -r ${release_files} "$release_name"-linux-x86_64-portable
+
+if [ "$bsd_sed" == "true" ]; then
+    sed -i '' -E "s|^portable_release=.*|portable_release=true|" "$release_name"-linux-x86_64-portable/x360mc
+else
+    sed -i'' -E "s|^portable_release=.*|portable_release=true|" "$release_name"-linux-x86_64-portable/x360mc
+fi
+
+echo "Downloading the latest ffmpeg for Linux..."
+rm -f ffmpeg.xz
+curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.xz
+7z e ffmpeg.xz -o"$release_name"-linux-x86_64-portable/bin
+rm -f ffmpeg.xz
+
+if [ "$mac" == "false" ]; then
+    rm -rf handbrake-cli-pled
+    pled/pled HandBrakeCLI handbrake-cli-pled
+fi
+
+cp -r handbrake-cli-pled/* "$release_name"-linux-x86_64-portable/bin
+echo "Downloading the latest yt-dlp for Linux..."
+curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux" -o yt-dlp_linux
+cp yt-dlp_linux "$release_name"-linux-x86_64-portable/bin/yt-dlp
+# Keep around until finished for Linux package files.
+
+unzip Optional-Media-Update-12-12-2011.zip -d "$release_name"-linux-x86_64-portable
+
+chmod -R 777 "$release_name"-linux-x86_64-portable
+zip -r  "$release_name"-linux-x86_64-portable.zip "$release_name"-linux-x86_64-portable
+
+# Linux Deb package release.
+mkdir -p "$release_name"/usr/bin
+mkdir -p "$release_name"/usr/share/x360mc
+mkdir -p "$release_name"/DEBIAN
+cp control "$release_name"/DEBIAN
+cp "$program" "$release_name"/usr/bin
+cp yt-dlp_linux "$release_name"/usr/share/x360mc/yt-dlp
+dpkg-deb --root-owner-group --build "$release_name"
+rm -rf "$release_name"
+
+# Linux RPM package release.
+rm -rf rpm-tmp
+mkdir -p rpm-tmp/RPMS rpm-tmp/SPECS rpm-tmp/SOURCES rpm-tmp/BUILD
+cp ezre.spec rpm-tmp/SPECS/ezre.spec
+cp "$program" rpm-tmp/SOURCES/"$program"
+cp yt-dlp_linux rpm-tmp/SOURCES/yt-dlp_linux
+rpmbuild -bb --target x86_64 rpm-tmp/SPECS/ezre.spec --define "_topdir $PWD/rpm-tmp" --define "_tmppath $PWD/rpm-tmp"
+mv rpm-tmp/RPMS/x86_64/*.rpm .
+rm -rf rpm-tmp
+
+rm yt-dlp_linux

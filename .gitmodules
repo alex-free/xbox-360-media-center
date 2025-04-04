@@ -1,0 +1,3 @@
+[submodule "pled"]
+	path = pled
+	url = https://github.com/alex-free/pled
