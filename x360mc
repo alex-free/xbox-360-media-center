@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=1.0
+version=1.0.1
 
 # Specifies if we use self contained bin dir. Set by build script during each release. Also tells us if we need root to update yt-dlp.
 portable_release=false
@@ -25,7 +25,7 @@ portable_release=false
 # * Max video bitrate at 9872k to account for maximum total bitrate of 10000k.
 # * H.264 profile set to level 4.1.
 
-echo -e "Xbox 360 Media Center v"$version"\n(C) 2025, Alex Free (3-BSD)\nhttps://github.com/alex-free/xbox-360-media-center\n"
+echo -e "Xbox 360 Media Center v"$version"\n(C) 2025-2026, Alex Free (3-BSD)\nhttps://github.com/alex-free/xbox-360-media-center\n"
 
 if [ "$portable_release" == "true" ]; then
         # Put HandBrakeCLI, yt-dlp, and ffmpeg in $PATH if they are in the same directory as this script.
@@ -41,8 +41,9 @@ else
         
             if command -v dnf > /dev/null; then
                 echo "Using dnf"
-                sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-	            sudo dnf -y swap ffmpeg-free ffmpeg --allowerasing
+                sudo sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
+                sudo dnf swap -y ffmpeg-free ffmpeg --allowerasing
+                sudo dnf update -y @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin
                 sudo dnf -y install handbrake
             elif command -v apt > /dev/null; then
                 echo "Using apt"
@@ -59,7 +60,7 @@ which yt-dlp
 which ffmpeg
 which HandBrakeCLI
 
-if ! [[ $# -eq 1 && "$1" == "-yu" ]] && ! [[ $# -eq 2 && ("$1" == "-c" || "$1" == "-yl" || "$1" == "-yh" ) ]]; then
+if ! [[ $# -eq 1 && "$1" == "-yu" ]] && ! [[ $# -eq 2 && ("$1" == "-c" || "$1" == "-y" ) ]]; then
 
     echo "Error: incorrect number of arguments. 1 or 2 arguments are required.
 Usage:
@@ -68,9 +69,7 @@ x360mc -c <input media file>     Convert media file to an Xbox 360 compatible H.
 
 x360mc -c <input folder of media files>      Recursively convert a folder of Recursively convert a folder of .mkv or .mp4 files to Xbox 360 compatible H.264 MP4s (up to 1080p).
 
-x360mc -yl <YouTube URL>     Download YouTube video as an Xbox 360 compatible H.264 MP4 using the lower bitrate set and highest resolution availble up to 1080p (must have double quotes around URL).
-
-x360mc -yh <YouTube URL>     Download YouTube video as an Xbox 360 compatible H.264 MP4 using the highest bitrate set and highest resolution available up to 1080p (must have double quotes around URL).
+x360mc -y <YouTube URL>     Download YouTube video as an Xbox 360 compatible H.264 MP4 at the highest resolution availble up to 1080p (must have double quotes around URL).
 
 x360mc -yu       Update YouTube-DLP.
 "
@@ -98,25 +97,7 @@ if [ "$1" == "-c" ]; then
             fi
         done
     fi
-elif [ "$1" == "-yh" ]; then
-    # Find lines containing 'avc1' and sort them by format number in reverse order. If this format set exists we will never get to the lower bitrate format set. If it doesn't we will skip format 160 (144p lower bitrate) and drop into 133-137 range. Full highest bitrate set for H.264 (AVC1) video is:
-    # * 394 (144p).
-    # * 395 (240p).
-    # * 396 (360p).
-    # * 397 (480p).
-    # * 398 (720p).
-    # * 399 (1080p).
-    formats="$(yt-dlp -F "${2}")"
-    highest_supported_format="$(echo "$formats" | grep 'avc1' | awk '$1 != 160' | sort -t ' ' -k1,1nr | head -n 1 | awk '{print $1}')"
-    
-    if [ -z "$highest_supported_format" ]; then
-        echo "Error, unable to get any video format. Try updating yt-dlp with the command x360mc -u."
-        exit 1
-    fi
-    
-    echo "Got format "$highest_supported_format""
-    yt-dlp -f "$highest_supported_format"+234 "${2}"
-elif [ "$1" == "-yl" ]; then
+elif [ "$1" == "-y" ]; then
     # Find lines containing 'avc1' and sort them by format number in reverse order. Ignores everything after 137 (higher quality set of AVC1). Ignores format 160 (144p) because 240p is always available and that seems like a pain in the ass to implement. Full lower bitrate set for H.264 (AVC1) video is:
     # * 160 (144p) (ignored, never downloaded see above).
     # * 133 (240p).
@@ -133,7 +114,7 @@ elif [ "$1" == "-yl" ]; then
     fi
     
     echo "Got format "$highest_supported_format""
-    yt-dlp -f "$highest_supported_format"+234 "${2}"
+    yt-dlp -f "$highest_supported_format"+140 "${2}"
 elif [ "$1" == "-yu" ]; then
     if [ "$portable_release" == "true" ]; then
         yt-dlp -U

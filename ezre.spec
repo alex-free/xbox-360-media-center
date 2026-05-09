@@ -1,5 +1,5 @@
 Name: xbox-360-media-center
-Version: v1.0
+Version: v1.0.1
 Summary: Local file conversion + YouTube downloader specialized in creating media files compatible with the native Xbox 360 video player, with 1080p support.
 Release: 1
 License: 3-BSD

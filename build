@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # EzRe build script for Xbox 360 Media Center.
-version="1.0"
+version="1.0.1"
 program="x360mc"
 release_name="xbox-360-media-center-v$version"
 release_files="x360mc *.md"
@@ -88,6 +88,7 @@ rm ffmpeg.zip
 rm -f yt-dlp_macos_legacy
 echo "Downloading the latest yt-dlp for Mac OS X 10.9+..."
 curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos_legacy" -o "$release_name"-mac-os-x86_64-portable/bin/yt-dlp
+chmod 777 "$release_name"-mac-os-x86_64-portable/bin/yt-dlp
 
 unzip Optional-Media-Update-12-12-2011.zip -d "$release_name"-mac-os-x86_64-portable
 
@@ -105,21 +106,23 @@ else
     sed -i'' -E "s|^portable_release=.*|portable_release=true|" "$release_name"-linux-x86_64-portable/x360mc
 fi
 
-echo "Downloading the latest ffmpeg for Linux..."
-rm -f ffmpeg.xz
-curl -L "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz" -o ffmpeg.xz
-7z e ffmpeg.xz -o"$release_name"-linux-x86_64-portable/bin
-rm -f ffmpeg.xz
-
 if [ "$mac" == "false" ]; then
     rm -rf handbrake-cli-pled
     pled/pled HandBrakeCLI handbrake-cli-pled
+    rm -rf ffmpeg-pled
+    pled/pled ffmpeg ffmpeg-pled
 fi
 
 cp -r handbrake-cli-pled/* "$release_name"-linux-x86_64-portable/bin
+cp -r ffmpeg-pled/* "$release_name"-linux-x86_64-portable/bin
+rm -rf handbrake-cli-pled
+rm -rf ffmpeg-pled
+
 echo "Downloading the latest yt-dlp for Linux..."
 curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux" -o yt-dlp_linux
+chmod 777 yt-dlp_linux
 cp yt-dlp_linux "$release_name"-linux-x86_64-portable/bin/yt-dlp
+
 # Keep around until finished for Linux package files.
 
 unzip Optional-Media-Update-12-12-2011.zip -d "$release_name"-linux-x86_64-portable
