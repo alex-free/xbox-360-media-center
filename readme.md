@@ -35,7 +35,7 @@ Changes:
 
 ----------------------------------------------------
 
-* [xbox-360-media-center-v1.0.1-mac-os-x86\_64-portable.zip](https://github.com/alex-free/xbox-360-media-center/releases/download/v1.0.1/xbox-360-media-center-v1.0.1-mac-os-x86_64-portable.zip) _Portable Release for Mac OS 10.13 and above (64 bit)_
+* [xbox-360-media-center-v1.0.1-mac-os-x86\_64-portable.zip](https://github.com/alex-free/xbox-360-media-center/releases/download/v1.0.1/xbox-360-media-center-v1.0.1-mac-os-x86_64-portable.zip) _Portable Release for Mac OS 10.15 and above (64 bit)_
 
 * [xbox-360-media-center-v1.0.1-linux-x86\_64-portable.zip](https://github.com/alex-free/xbox-360-media-center/releases/download/v1.0.1/xbox-360-media-center-v1.0.1-linux-x86_64-portable.zip) _Portable Release for x86\_64 Linux (64 bit)_
 
@@ -95,11 +95,11 @@ A: Update youtube-dlp with the command `x360mc -yu`.
 
 Q: I'm streaming videos over my LAN and some are stuttering/not starting/freezing during playback?
 
-A: This is most likely do to an unstable network connection and or the server software, and not the converted media files themselves. There is a chance that if you exit out of the video and then resume it, the video will play better. Another thing you can do if using WiFI is to physically move the Xbox 360 to a location closer to the router/farther away from interference of other WiFi devices. Lastly, if playing YouTube videos you can opt for the lower bitrate videos by specifying the `-yl` argument (i.e. `x360mc -yl <video url>`. But really if you can, use an Ethernet cable with your Xbox 360 for the most stable connection to prevent these issues when using a LAN. If you can't do that, copy the files to a USB drive or FTP them to your HDD (or USB HDD!). The external HDD or even USB HDD is gonna be the most stable and fastest storage you have (you can also copy the converted media files from the USB drive to your HDD if you can't use your LAN). If your still having some kind of issue with even the HDD, open an issue on Github and tell me about it.
+A: This is most likely do to an unstable network connection and or the server software, and not the converted media files themselves. There is a chance that if you exit out of the video and then resume it, the video will play better. Another thing you can do if using WiFI is to physically move the Xbox 360 to a location closer to the router/farther away from interference of other WiFi devices. If you can, use an Ethernet cable with your Xbox 360 for the most stable connection to prevent these issues when using a LAN. If you can't do that, copy the files to a USB drive or FTP them to your HDD (or USB HDD!). The external HDD or even USB HDD is gonna be the most stable and fastest storage you have (you can also copy the converted media files from the USB drive to your HDD if you can't use your LAN). If your still having some kind of issue with even the HDD, open an issue on Github and tell me about it.
 
 Q: My video is showing a black screen with audio?
 
-A: This is some kind of bug that happens when you've been using the native Xbox 360 video player a lot (either that or with the streaming server software itself, not sure). Go back to Xbox home (exiting the video player) and start it again.
+A: This could be some kind of bug where rarely the YouTube video codec directly downloaded isn't compatible. I've seen it with one certain video so far, the fix it to use the `-c` function on the downloaded video to convert it to one the 360 is forced to accept.
 
 Q: My folder is empty when I browse it with the native Xbox 360 video player?
 
@@ -112,10 +112,6 @@ A: FFmpeg converted media files just won't work with the native Xbox 360 video p
 Q: The Linux package releases don't use my distribution's yt-dlp?
 
 A: Nope! The Linux distributions are too slow at updating yt-dlp, so even the Linux package releases use their own internal yt-dlp that may be updated with the command `x360mc -yu`.
-
-Q: Why is Mac OS 10.13 the lowest supported?
-
-A: The latest HandBrakeCLI requires Mac OS 10.13 as a minimum. Every other dependency actually only requires Mac OS X 10.9.
 
 ## Bundled Software
 
